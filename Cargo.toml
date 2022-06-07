@@ -24,3 +24,7 @@ libvlc-sys = { path = "libvlc-sys" }
 [features]
 default = []
 use-bindgen = ["libvlc-sys/use-bindgen"]
+
+[dev-dependencies]
+raw-window-handle = "0.4.3"
+winit = "0.26.1"
