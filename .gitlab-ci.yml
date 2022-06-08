@@ -1,5 +1,6 @@
 stages:
     - build
+    - deploy
 
 variables:
     VLC_UBUNTU_IMAGE: registry.videolan.org/vlc-rs-libvlc-stable-ubuntu:20211117143343
@@ -15,3 +16,23 @@ vlc-rs-build:
     script:
         - . $CARGO_HOME/env
         - cargo build --all
+
+vlc-rs-deploy:
+    tags:
+        - docker
+        - amd64
+    stage: deploy
+    image:
+        name: $VLC_UBUNTU_IMAGE
+    variables:
+    #    CARGO_TOKEN: $CARGO_TOKEN
+    rules:
+        - if: '$CI_COMMIT_TAG =~ /^(\d+\.)?(\d+\.)?(\*|\d+)/'
+    script:
+        - . $CARGO_HOME/env
+        # - cargo publish --token "$CARGO_TOKEN"
+        - cargo publish --dry-run
+    artifacts:
+        name: "${CI_COMMIT_TAG}"
+        paths:
+            - target/package/vlc-rs-*.crate
