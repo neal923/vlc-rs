@@ -22,13 +22,17 @@ fn main() {
         .unwrap();
 
     // Instanciate libvlc
-    let options = vec![String::from("-vv")];
+    let instance = Instance::new().unwrap();
 
-    let instance = Instance::with_args(Some(options)).unwrap();
-
-    let argv: Vec<String> = std::env::args().collect();
-
-    let md = Media::new_location(&instance, &argv[1]).unwrap();
+    let args: Vec<String> = std::env::args().collect();
+    let path = match args.get(1) {
+        Some(s) => s,
+        None => {
+            println!("Usage: winit_player path_to_a_media_file");
+            return;
+        }
+    };
+    let md = Media::new_path(&instance, path).unwrap();
 
     let mdp = MediaPlayer::new(&instance).unwrap();
 
