@@ -147,6 +147,13 @@ impl MediaPlayer {
         unsafe{ sys::libvlc_media_player_set_hwnd(self.ptr, drawable) };
     }
 
+    /// Set an Android surface where the media player should render its video output.
+    ///
+    /// drawable is a org.videolan.libvlc.AWindow jobject from the libvlcjni project
+    pub fn set_android_context(&self, drawable: *mut c_void) {
+        unsafe{ sys::libvlc_media_player_set_android_context(self.ptr, drawable) };
+    }
+
     /// Get the Windows API window handle (HWND) previously set with set_hwnd().
     pub fn get_hwnd(&self) -> Option<*mut c_void> {
         let hwnd = unsafe{ sys::libvlc_media_player_get_hwnd(self.ptr) };
