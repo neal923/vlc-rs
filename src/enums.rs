@@ -106,6 +106,13 @@ define_enum!(
     Gamma = libvlc_video_adjust_option_t_libvlc_adjust_Gamma,
 );
 
+define_enum!(
+    PlaybackMode, libvlc_playback_mode_t;
+    Default = libvlc_playback_mode_t_libvlc_playback_mode_default,
+    Loop = libvlc_playback_mode_t_libvlc_playback_mode_loop,
+    Repeat = libvlc_playback_mode_t_libvlc_playback_mode_repeat,
+);
+
 // libvlc 3.0
 // define_enum!(
 //     ParseFlag, libvlc_media_parse_flag_t;
