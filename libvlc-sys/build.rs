@@ -144,17 +144,15 @@ mod windows {
     }
 
     fn vlc_path() -> PathBuf {
-        #[allow(unused_assignments)]
-        let arch_path: Option<OsString> = match target_arch().as_str() {
-            "x86" => env::var_os("VLC_LIB_DIR_X86"),
-            "x86_64" => env::var_os("VLC_LIB_DIR_X86_64"),
-            _ => unreachable!(),
-        };
-
-        arch_path
+        env::var_os("VLC_LIB_DIR_WIN")
+            .or_else(|| match target_arch().as_str() {
+                "x86" => env::var_os("VLC_LIB_DIR_X86"),
+                "x86_64" => env::var_os("VLC_LIB_DIR_X86_64"),
+                _ => unreachable!(),
+            })
             .or_else(|| env::var_os("VLC_LIB_DIR"))
             .map(PathBuf::from)
-            .expect("VLC_LIB_DIR not set")
+            .expect("VLC_LIB_DIR_WIN or VLC_LIB_DIR not set")
     }
 
     fn target_arch() -> String {
@@ -162,7 +160,63 @@ mod windows {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
+mod manual {
+    use std::env;
+    use std::path::PathBuf;
+
+    pub fn link_vlc_from_env() {
+        let lib_dir = resolve_lib_dir().unwrap_or_else(|keys| {
+            panic!(
+                "HAS_PKG_CONFIG is false but none of the following environment variables are set: {}",
+                keys.join(", ")
+            )
+        });
+
+        println!(
+            "cargo:rustc-link-search=native={}",
+            lib_dir.display()
+        );
+    }
+
+    fn resolve_lib_dir() -> Result<PathBuf, Vec<&'static str>> {
+        let target = env::var("CARGO_CFG_TARGET_OS").unwrap_or_else(|_| String::from("unknown"));
+        let keys = match target.as_str() {
+            "macos" => vec!["VLC_LIB_DIR_MACOS", "VLC_LIB_DIR"],
+            "linux" => vec!["VLC_LIB_DIR_LINUX", "VLC_LIB_DIR"],
+            _ => vec!["VLC_LIB_DIR"],
+        };
+
+        for key in &keys {
+            if let Some(value) = env::var_os(key) {
+                return Ok(PathBuf::from(value));
+            }
+        }
+
+        Err(keys)
+    }
+}
+
+fn should_use_pkg_config() -> bool {
+    env::var("HAS_PKG_CONFIG")
+        .map(|value| {
+            !matches!(
+                value.to_ascii_lowercase().as_str(),
+                "0" | "false" | "no"
+            )
+        })
+        .unwrap_or(true)
+}
+
 fn main() {
+    println!("cargo:rerun-if-env-changed=HAS_PKG_CONFIG");
+    println!("cargo:rerun-if-env-changed=VLC_LIB_DIR");
+    println!("cargo:rerun-if-env-changed=VLC_LIB_DIR_LINUX");
+    println!("cargo:rerun-if-env-changed=VLC_LIB_DIR_MACOS");
+    println!("cargo:rerun-if-env-changed=VLC_LIB_DIR_WIN");
+    println!("cargo:rerun-if-env-changed=VLC_LIB_DIR_X86");
+    println!("cargo:rerun-if-env-changed=VLC_LIB_DIR_X86_64");
+
     // Binding generation
     #[cfg(feature = "bindgen")]
     generate_bindings();
@@ -171,12 +225,20 @@ fn main() {
     copy_pregenerated_bindings();
 
     // Link
-    if let Err(err) = link_vlc_with_pkgconfig() {
+    if should_use_pkg_config() {
+        if let Err(err) = link_vlc_with_pkgconfig() {
+            #[cfg(target_os = "windows")]
+            windows::link_vlc();
+
+            #[cfg(not(target_os = "windows"))]
+            panic!("libvlc not found: {:?}", err);
+        }
+    } else {
         #[cfg(target_os = "windows")]
         windows::link_vlc();
 
         #[cfg(not(target_os = "windows"))]
-        panic!("libvlc not found: {:?}", err);
+        manual::link_vlc_from_env();
     }
 
     println!("cargo:rustc-link-lib=vlc");
