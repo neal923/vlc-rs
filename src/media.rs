@@ -185,6 +185,21 @@ impl Media {
         }
     }
 
+    /// Add an option to the media.
+    /// This option will be used to determine how the media_player will read the media.
+    /// This allows to use VLC's advanced reading/streaming options on a per-media basis.
+    ///
+    /// # Examples
+    /// - `:input-fast-seek` - disable fast seeking for more accurate time-based seeks
+    /// - `:avcodec-hurry-up=0` - disable frame skipping for precise decoding
+    /// - `:file-caching=3000` - set caching (in ms)
+    pub fn add_option(&self, option: &str) {
+        unsafe{
+            let cstr = to_cstr(option);
+            sys::libvlc_media_add_option(self.ptr, cstr.as_ptr());
+        }
+    }
+
     /// Returns raw pointer
     pub fn raw(&self) -> *mut sys::libvlc_media_t {
         self.ptr
